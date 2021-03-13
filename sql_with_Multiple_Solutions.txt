@@ -1,0 +1,129 @@
+(a)
+select did, dname
+from dept inner join works using (did)
+where pct_time = 50;
+
+-- version without "using"
+  select dept.did, dname
+  from dept inner join works on dept.did = works.did
+  where pct_time = 50;
+
+-- version without "join"
+  select dept.did, dname
+  from dept, works
+  where dept.did = works.did
+        and pct_time = 50;
+
+(b)
+select ename
+from emp
+where exists (select * from works
+                     inner join dept using (did)
+                     where works.eid = emp.eid
+                           and dept.dname = 'Hardware')
+  and exists (select * from works
+                     inner join dept using (did)
+                     where works.eid = emp.eid
+                           and dept.dname = 'Software')
+  and exists (select * from works
+                     inner join dept using (did)
+                     where works.eid = emp.eid
+                           and dept.dname = 'Research');
+
+-- find employees working in *any* of the departments
+  select ename
+  from emp inner join works using (eid)
+           inner join dept using (did)
+  where dname = 'Hardware' or dname = 'Software'
+        or dname = 'Research';
+
+(c)
+select dname
+from dept
+where not exists (select * from works
+                         where works.did = dept.did);
+
+(d)
+select managerid
+from dept
+group by managerid
+having min(budget) > 1500000;
+
+(e)
+select ename
+from emp
+where salary <= (select min(salary) from emp);
+
+(f)
+select ename
+from dept inner join emp on managerid = eid
+where budget = (select max(budget) from dept);
+
+-- Putting the where condition in the on clause
+  select ename
+  from dept inner join emp
+       on managerid = eid
+          and dept.budget = (select max(budget) from dept);
+
+-- Putting the on condition in the where clause
+  select ename
+  from dept, emp
+  where budget = (select max(budget) from dept)
+        and managerid = eid;
+
+(g)
+select dname, avg(salary) as `average employee salary`
+from dept inner join works using (did)
+          inner join emp using (eid)
+where budget >= 50
+group by did;
+
+(h)
+select managerid
+from dept
+group by managerid
+having sum(budget) = 
+(select max(s)
+ from
+ (select sum(budget) as s from dept group by managerid) q);
+
+-- Assuming that the highest total budget is unique...
+  select managerid
+    from dept
+   group by managerid
+   order by sum(budget) desc
+   limit 1;
+
+(i)
+select distinct ename
+  from emp inner join works
+           using (eid)
+           inner join
+            (select avg(salary) as avg_salary, did
+               from emp inner join works using (eid)
+               group by did) q
+           using (did)
+ where salary <= avg_salary;
+
+-- without "using"
+  select distinct ename
+    from emp inner join works
+             on emp.eid = works.eid
+             inner join
+              (select avg(salary) as avg_salary, did
+                 from emp inner join works
+                          on emp.eid = works.eid
+                 group by did) q
+             using (did)
+   where salary <= avg_salary;
+
+(j)
+select ename
+  from emp inner join works using (eid)
+           inner join dept using (did)
+ where dept.dname = 'Hardware'
+       and ename not in (
+          select ename
+            from emp inner join works using (eid)
+                     inner join dept using (did)
+           where dept.dname != 'Hardware');
